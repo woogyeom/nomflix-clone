@@ -216,7 +216,7 @@ function Header() {
 						whileHover={!isHome ? "hover" : "normal"}
 						animate={isHome ? "selected" : "normal"}
 					>
-						<Link to="/">Home</Link>
+						<Link to="/">홈</Link>
 					</Item>
 					<Item
 						onClick={() => {
@@ -229,7 +229,7 @@ function Header() {
 						whileHover={!isTv ? "hover" : "normal"}
 						animate={isTv ? "selected" : "normal"}
 					>
-						<Link to="/tvs">TV Shows</Link>
+						<Link to="/tvs">시리즈</Link>
 					</Item>
 				</Items>
 			</Col>
