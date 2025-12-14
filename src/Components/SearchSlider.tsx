@@ -44,7 +44,7 @@ const rowVariants: Variants = {
 	}),
 };
 
-const Box = styled(motion.div)<{ $bgPhoto: string }>`
+const Box = styled(motion.div)<{ $bgPhoto: string; $boxIndex: number }>`
 	background-color: white;
 	background-image: linear-gradient(
 			to bottom,
@@ -68,12 +68,11 @@ const Box = styled(motion.div)<{ $bgPhoto: string }>`
 	align-items: end;
 	padding: 10px;
 	cursor: pointer;
-	&:first-child {
-		transform-origin: center left;
-	}
-	&:last-child {
-		transform-origin: center right;
-	}
+	transform-origin: ${(props) => {
+		if (props.$boxIndex === 0) return "center left";
+		if (props.$boxIndex === offset - 1) return "center right";
+		return "center";
+	}};
 `;
 
 const boxVariants: Variants = {
@@ -114,6 +113,15 @@ const infoVariants: Variants = {
 	},
 };
 
+const NoResultsText = styled.div`
+	position: absolute;
+	top: 80px;
+	left: 10px;
+	transform: translateY(-50%);
+	font-size: 18px;
+	color: ${(props) => props.theme.white.darker};
+`;
+
 interface ISliderProps {
 	data: ISearchResult[];
 	title: string;
@@ -129,12 +137,23 @@ function SearchSlider({ data, title }: ISliderProps) {
 	const [index, setIndex] = useState(0);
 	const [leaving, setLeaving] = useState(false);
 
+	const totalItems = data.length;
+	const maxIndex = Math.floor(totalItems / offset);
+
 	const increaseIndex = () => {
-		if (data) {
-			if (leaving) return;
-			setLeaving(true);
-			setIndex((prev) => prev + 1);
+		if (!data || totalItems <= offset) {
+			return;
 		}
+		if (leaving) return;
+		setLeaving(true);
+
+		setIndex((prev) => {
+			const nextIndex = prev + 1;
+			if (nextIndex > maxIndex) {
+				return 0;
+			}
+			return nextIndex;
+		});
 	};
 
 	const keyword = new URLSearchParams(location.search).get("keyword");
@@ -144,9 +163,26 @@ function SearchSlider({ data, title }: ISliderProps) {
 		});
 	};
 
+	if (totalItems === 0) {
+		return (
+			<SliderContainer>
+				<SliderTitle style={{ cursor: "default" }}>{title}</SliderTitle>
+				<NoResultsText>검색 결과가 없습니다.</NoResultsText>
+			</SliderContainer>
+		);
+	}
+
+	const isSingleRow = totalItems <= offset;
+	const limit = isSingleRow ? totalItems : offset;
+
 	return (
 		<SliderContainer>
-			<SliderTitle onClick={increaseIndex}>{title} &rarr;</SliderTitle>
+			<SliderTitle
+				onClick={increaseIndex}
+				style={{ cursor: isSingleRow ? "default" : "pointer" }}
+			>
+				{title} {totalItems > offset && "→"}
+			</SliderTitle>
 			<AnimatePresence initial={false} onExitComplete={() => setLeaving(false)}>
 				<Row
 					variants={rowVariants}
@@ -158,9 +194,11 @@ function SearchSlider({ data, title }: ISliderProps) {
 					custom={width}
 				>
 					{/* 배열을 먼저 만들고 영화를 채움 */}
-					{new Array(offset).fill(0).map((_, i) => {
-						if (data.length === 0) return null;
-						const SearchResultIndex = (index * offset + i) % data.length;
+					{new Array(limit).fill(0).map((_, i) => {
+						const startIndex = totalItems <= offset ? 0 : index * offset;
+						const SearchResultIndex = startIndex + i;
+						if (SearchResultIndex >= totalItems) return null;
+
 						const item = data[SearchResultIndex];
 						return (
 							<Box
@@ -173,6 +211,7 @@ function SearchSlider({ data, title }: ISliderProps) {
 								whileHover="hover"
 								key={`${title}-${item.id}-${index}`}
 								$bgPhoto={makeImagePath(item.backdrop_path || "")}
+								$boxIndex={i}
 							>
 								{item.media_type === "movie" ? item.title : item.name}
 								<Info variants={infoVariants}>
